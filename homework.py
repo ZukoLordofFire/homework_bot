@@ -35,11 +35,13 @@ HOMEWORK_STATUSES = {
 
 
 def send_message(bot, message):
+    """Отпраляет пользователю сообщение"""
     text = message
     bot.send_message(TELEGRAM_CHAT_ID, text)
 
 
 def get_api_answer(current_timestamp):
+    """Получается ответ от api"""
     timestamp = current_timestamp or int(time.time())
     params = {'from_date': timestamp}
     response = requests.get(ENDPOINT, headers=HEADERS, params=params)
@@ -50,6 +52,7 @@ def get_api_answer(current_timestamp):
 
 
 def check_response(response):
+    """Проверяет ответ api"""
     homeworks = response['homeworks']
     if type(homeworks) != list:
         logger.error('Тип данных в ответе не соответствует ожидаемому')
@@ -62,25 +65,27 @@ def check_response(response):
 
 
 def parse_status(homework):
+    """Узнаёт статус домашней работы"""
     homework_name = homework['homework_name']
     print(homework_name)
     if homework_name is None:
-        logging.error('Не удалось получить данные домашки, homework_name is None')
-        return f'Название клада не получено, homework_name is None'
+        logging.error('Не получены данные домашки, homework_name is None')
+        return 'Название клада не получено, homework_name is None'
     homework_status = homework['status']
     if homework_status is None:
-        logging.error('Не удалось получить данные домашки, homework_status is None')
-        return f'Статус клада не получен, homework_status is None'
+        logging.error('Не получены данные домашки, homework_status is None')
+        return 'Статус клада не получен, homework_status is None'
     try:
         verdict = HOMEWORK_STATUSES[homework_status]
         logging.info('Статус домашней работы захвачен, капитан')
     except Exception as error:
-        logging.error(f'Захватывать нечего, там пусто! Быть может мы не вовремя? Ошибка: {error}')
+        logging.error(f'Пусто! Быть может мы не вовремя? Ошибка: {error}')
 
     return f'Изменился статус проверки работы "{homework_name}". {verdict}'
 
 
 def check_tokens():
+    """Проверяет наличие необходимых токенов"""
     if PRACTICUM_TOKEN and TELEGRAM_TOKEN and TELEGRAM_CHAT_ID:
         logger.debug('Все токены на месте, можно работать!')
         return True
@@ -96,7 +101,7 @@ def main():
     is_tokens_valid = check_tokens()
     if not is_tokens_valid:
         print('Выполнение программы прервано')
-        logger.error('Выполнение программы прервано из-за отсутствия токена')
+        logger.error('Отсутствует токен')
         return
     bot = telegram.Bot(token=TELEGRAM_TOKEN)
     current_timestamp = int(time.time())
