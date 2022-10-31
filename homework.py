@@ -50,9 +50,7 @@ def get_api_answer(current_timestamp):
 
 
 def check_response(response):
-    if not response['homeworks']:
-        logger.error('Список не содержит ключ homeworks')
-        raise ValueError()
+    print(response)
     homeworks = response['homeworks']
     if type(homeworks) != list:
         logger.error('Тип данных в ответе не соответствует ожидаемому')
@@ -111,9 +109,9 @@ def main():
     while True:
         try:
             response = api_response
-            checked_response = check_response(response)[0]
-            parsed_status = parse_status(checked_response)
-            status = checked_response['status']
+            checked_response = check_response(response)
+            parsed_status = parse_status(checked_response[0])
+            status = checked_response[0]['status']
             if status != last_status:
                 send_message(bot, parsed_status)
                 print('Сообщение с новым статусом отправлено')
