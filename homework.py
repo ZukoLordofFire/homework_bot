@@ -35,13 +35,13 @@ HOMEWORK_STATUSES = {
 
 
 def send_message(bot, message):
-    """Отпраляет пользователю сообщение"""
+    """Отпраляет пользователю сообщение."""
     text = message
     bot.send_message(TELEGRAM_CHAT_ID, text)
 
 
 def get_api_answer(current_timestamp):
-    """Получается ответ от api"""
+    """Получается ответ от api."""
     timestamp = current_timestamp or int(time.time())
     params = {'from_date': timestamp}
     response = requests.get(ENDPOINT, headers=HEADERS, params=params)
@@ -52,7 +52,7 @@ def get_api_answer(current_timestamp):
 
 
 def check_response(response):
-    """Проверяет ответ api"""
+    """Проверяет ответ api."""
     homeworks = response['homeworks']
     if type(homeworks) != list:
         logger.error('Тип данных в ответе не соответствует ожидаемому')
@@ -65,7 +65,7 @@ def check_response(response):
 
 
 def parse_status(homework):
-    """Узнаёт статус домашней работы"""
+    """Узнаёт статус домашней работы."""
     homework_name = homework['homework_name']
     print(homework_name)
     if homework_name is None:
@@ -85,7 +85,7 @@ def parse_status(homework):
 
 
 def check_tokens():
-    """Проверяет наличие необходимых токенов"""
+    """Проверяет наличие необходимых токенов."""
     if PRACTICUM_TOKEN and TELEGRAM_TOKEN and TELEGRAM_CHAT_ID:
         logger.debug('Все токены на месте, можно работать!')
         return True
@@ -95,9 +95,6 @@ def check_tokens():
 
 def main():
     """Основная логика работы бота."""
-
-    ...
-
     is_tokens_valid = check_tokens()
     if not is_tokens_valid:
         print('Выполнение программы прервано')
@@ -107,9 +104,6 @@ def main():
     current_timestamp = int(time.time())
     api_response = get_api_answer(current_timestamp)
     last_status = ''
-
-    ...
-
     while True:
         try:
             response = api_response
