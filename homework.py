@@ -50,7 +50,6 @@ def get_api_answer(current_timestamp):
 
 
 def check_response(response):
-    print(response)
     homeworks = response['homeworks']
     if type(homeworks) != list:
         logger.error('Тип данных в ответе не соответствует ожидаемому')
