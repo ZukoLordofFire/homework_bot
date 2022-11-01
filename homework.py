@@ -41,6 +41,7 @@ def send_message(bot, message):
     if message is None:
         raise ValueError('Сообщение не может быть пустым')
 
+
 def get_api_answer(current_timestamp):
     """Получается ответ от api."""
     timestamp = current_timestamp or int(time.time())
@@ -127,8 +128,9 @@ def main():
         except Exception as error:
             message = f'Сбой в работе программы: {error}'
             send_message(bot, message)
-        finally: 
+        finally:
             time.sleep(RETRY_TIME)
+
 
 if __name__ == '__main__':
     main()
