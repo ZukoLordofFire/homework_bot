@@ -10,6 +10,25 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+
+class ApiAnswerError(Exception):
+    """Ошибка ответа от API."""
+
+    pass
+
+
+class UnaviableApiError(Exception):
+    """Ошибка недоступности API."""
+
+    pass
+
+
+class CantSendMessageError(Exception):
+    """Ошибка отправки сообщения."""
+
+    pass
+
+
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 handler = logging.StreamHandler(stream=sys.stdout)
@@ -37,33 +56,40 @@ HOMEWORK_STATUSES = {
 
 def send_message(bot, message):
     """Отпраляет пользователю сообщение."""
-    bot.send_message(TELEGRAM_CHAT_ID, message)
-    if message is None:
-        raise ValueError('Сообщение не может быть пустым')
+    try:
+        bot.send_message(TELEGRAM_CHAT_ID, message)
+    except Exception:
+        raise CantSendMessageError('Не удалось отправить сообщение')
 
 
 def get_api_answer(current_timestamp):
     """Получается ответ от api."""
     timestamp = current_timestamp or int(time.time())
     params = {'from_date': timestamp}
-    response = requests.get(ENDPOINT, headers=HEADERS, params=params)
+    try:
+        response = requests.get(ENDPOINT, headers=HEADERS, params=params)
+    except Exception:
+        raise UnaviableApiError('Эндпоинт недоступен')
     if response is requests.ConnectionError:
         raise requests.ConnectionError('Не удалось соединиться')
     if response.status_code != HTTPStatus.OK:
-        raise ValueError('Ответ API не OK')
+        logger.info(response)
+        raise ApiAnswerError(f'Ответ API не OK: {response.status_code}.'
+                             f'Использовалось: {ENDPOINT}, {HEADERS}, {params}'
+                             )
     return response.json()
 
 
 def check_response(response):
     """Проверяет ответ api."""
-    if type(response) != dict:
+    if not isinstance(response, dict):
         raise TypeError('Ответ пришёл не в виде словаря')
-    homeworks = response['homeworks']
     if 'homeworks' not in response:
-        raise ValueError('В словаре нет homeworks')
+        raise KeyError('В словаре нет homeworks')
+    homeworks = response['homeworks']
     if 'current_date' not in response:
-        raise ValueError('В данных нет даты')
-    if type(homeworks) != list:
+        raise KeyError('В данных нет даты')
+    if not isinstance(homeworks, list):
         raise TypeError('Список домашек не в виде списка')
     logger.debug('Ответ сервера успешно прошел проверку')
     return homeworks
@@ -71,44 +97,40 @@ def check_response(response):
 
 def parse_status(homework):
     """Узнаёт статус домашней работы."""
-    if type(homework) != dict:
+    if not isinstance(homework, dict):
         raise TypeError('Данные о домашке не в виде словаря')
-    homework_name = homework['homework_name']
     if 'homework_name' not in homework:
-        raise ValueError('Нет названия домашки')
-    homework_status = homework['status']
+        raise KeyError('Нет названия домашки')
+    homework_name = homework['homework_name']
     if 'status' not in homework:
-        raise ValueError('В данных нет статуса')
-    if homework_status in HOMEWORK_STATUSES:
-        logging.info('Статус домашней работы захвачен, капитан')
-        verdict = HOMEWORK_STATUSES[homework_status]
-    else:
-        raise ValueError('Неизвестный статус')
+        raise KeyError('В данных нет статуса')
+    homework_status = homework['status']
+    if homework_status not in HOMEWORK_STATUSES:
+        raise KeyError(f'Неизвестный статус, {homework_status}')
+    logging.info('Статус домашней работы захвачен, капитан')
+    verdict = HOMEWORK_STATUSES[homework_status]
     return f'Изменился статус проверки работы "{homework_name}". {verdict}'
 
 
 def check_tokens():
     """Проверяет наличие необходимых токенов."""
-    if PRACTICUM_TOKEN and TELEGRAM_TOKEN and TELEGRAM_CHAT_ID:
-        return True
+    return PRACTICUM_TOKEN and TELEGRAM_TOKEN and TELEGRAM_CHAT_ID
 
 
 def main():
     """Основная логика работы бота."""
     is_tokens_valid = check_tokens()
-    if is_tokens_valid:
-        logger.debug('Все токены на месте')
-    else:
+    if not is_tokens_valid:
         logger.critical('Отсутствует токен')
         raise ValueError('Отсутствуют токены')
+    logger.debug('Все токены на месте')
     bot = telegram.Bot(token=TELEGRAM_TOKEN)
     current_timestamp = int(time.time())
     last_status = ''
     while True:
         try:
             api_response = get_api_answer(current_timestamp)
-            response = api_response
-            checked_response = check_response(response)
+            checked_response = check_response(api_response)
             parsed_status = parse_status(checked_response[0])
             status = checked_response[0]['status']
             if status != last_status:
@@ -116,15 +138,29 @@ def main():
                 logger.info('Сообщение с новым статусом отправлено')
             else:
                 logger.debug('Нет обновлений статуса')
-            current_timestamp = response['current_date']
+            current_timestamp = api_response['current_date']
             last_status = status
             logger.info('Записан текущий статус проверки домашки')
         except IndexError:
             logger.info('Нет домашек')
-        except ValueError:
-            logger.error('Ошибка значения, проверьте ключи')
-        except TypeError:
-            logger.error('Что-то преедаётся в неверном типе')
+        except ValueError as error:
+            logger.critical('Неверное значение переменных')
+            message = f'Сбой в работе программы: {error}'
+            send_message(bot, message)
+        except TypeError as error:
+            logger.error('Что-то передаётся в неверном типе')
+            message = f'Сбой в работе программы: {error}'
+            send_message(bot, message)
+        except ApiAnswerError as error:
+            logger.error('Неверный ответ API')
+            message = f'Сбой в работе программы: {error}'
+            send_message(bot, message)
+        except UnaviableApiError as error:
+            logger.error('Эндпоинт недоступен')
+            message = f'Сбой в работе программы: {error}'
+            send_message(bot, message)
+        except CantSendMessageError:
+            logger.error('Отправка сообщения не удалась')
         except Exception as error:
             message = f'Сбой в работе программы: {error}'
             send_message(bot, message)
