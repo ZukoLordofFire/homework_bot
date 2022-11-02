@@ -143,20 +143,12 @@ def main():
             logger.info('Записан текущий статус проверки домашки')
         except IndexError:
             logger.info('Нет домашек')
-        except ValueError as error:
-            logger.critical('Неверное значение переменных')
+        except (ValueError, TypeError) as error:
+            logger.critical('Неверное значение или тип переменных')
             message = f'Сбой в работе программы: {error}'
             send_message(bot, message)
-        except TypeError as error:
-            logger.error('Что-то передаётся в неверном типе')
-            message = f'Сбой в работе программы: {error}'
-            send_message(bot, message)
-        except ApiAnswerError as error:
-            logger.error('Неверный ответ API')
-            message = f'Сбой в работе программы: {error}'
-            send_message(bot, message)
-        except UnaviableApiError as error:
-            logger.error('Эндпоинт недоступен')
+        except (ApiAnswerError, UnaviableApiError) as error:
+            logger.error('Ошибка в ответе API')
             message = f'Сбой в работе программы: {error}'
             send_message(bot, message)
         except CantSendMessageError:
