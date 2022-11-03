@@ -127,6 +127,7 @@ def main():
     bot = telegram.Bot(token=TELEGRAM_TOKEN)
     current_timestamp = int(time.time())
     last_status = ''
+    current_error = ''
     while True:
         try:
             api_response = get_api_answer(current_timestamp)
@@ -141,21 +142,14 @@ def main():
             current_timestamp = api_response['current_date']
             last_status = status
             logger.info('Записан текущий статус проверки домашки')
-        except IndexError:
-            logger.info('Нет домашек')
-        except (ValueError, TypeError) as error:
-            logger.critical('Неверное значение или тип переменных')
-            message = f'Сбой в работе программы: {error}'
-            send_message(bot, message)
-        except (ApiAnswerError, UnaviableApiError) as error:
-            logger.error('Ошибка в ответе API')
-            message = f'Сбой в работе программы: {error}'
-            send_message(bot, message)
         except CantSendMessageError:
             logger.error('Отправка сообщения не удалась')
         except Exception as error:
+            logger.error(f'Сбой в работе программы {error}')
             message = f'Сбой в работе программы: {error}'
-            send_message(bot, message)
+            if current_error != message:
+                send_message(bot, message)
+                current_error = message
         finally:
             time.sleep(RETRY_TIME)
 
